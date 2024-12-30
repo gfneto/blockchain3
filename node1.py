@@ -4,14 +4,20 @@ import socket
 import threading
 from hashlib import sha256
 from flask import Flask, request, jsonify
+import os
 
 app = Flask(__name__)
+
+BLOCKCHAIN_FILE = "blockchain.data"
 
 class Blockchain:
     def __init__(self):
         self.chain = []
         self.transactions = []
-        self.create_genesis_block()
+        self.load_from_file()  # Try to load the blockchain from a file
+
+        if not self.chain:  # If the blockchain is empty, create the genesis block
+            self.create_genesis_block()
 
     def create_genesis_block(self):
         genesis_block = {
@@ -23,6 +29,7 @@ class Blockchain:
         }
         genesis_block['hash'] = self.calculate_hash(genesis_block)
         self.chain.append(genesis_block)
+        self.save_to_file()  # Save to file after creating the genesis block
 
     def create_block(self):
         if not self.transactions:
@@ -38,6 +45,7 @@ class Blockchain:
         block['hash'] = self.calculate_hash(block)
         self.chain.append(block)
         self.transactions = []  # Clear transactions after block creation
+        self.save_to_file()  # Save the updated blockchain to file
         return block
 
     @staticmethod
@@ -47,6 +55,7 @@ class Blockchain:
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
+        self.save_to_file()  # Save the blockchain after adding a transaction
 
     def is_valid_chain(self, chain):
         for i in range(1, len(chain)):
@@ -61,6 +70,18 @@ class Blockchain:
     def replace_chain(self, chain):
         if len(chain) > len(self.chain) and self.is_valid_chain(chain):
             self.chain = chain
+            self.save_to_file()  # Save the replaced chain to file
+
+    def save_to_file(self):
+        with open(BLOCKCHAIN_FILE, 'w') as file:
+            json.dump({'chain': self.chain, 'transactions': self.transactions}, file)
+
+    def load_from_file(self):
+        if os.path.exists(BLOCKCHAIN_FILE):
+            with open(BLOCKCHAIN_FILE, 'r') as file:
+                data = json.load(file)
+                self.chain = data.get('chain', [])
+                self.transactions = data.get('transactions', [])
 
 class Node:
     def __init__(self, host, port, blockchain):
