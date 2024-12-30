@@ -1,5 +1,3 @@
-Here’s everything consolidated into a single block of text for your GitHub README.md file:
-
 ```markdown
 # Blockchain Node Setup
 
