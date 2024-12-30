@@ -1,0 +1,7 @@
+from Ubuntu Server cloud image:
+apt-get update
+apt-get install python3-pip python3.12-venv
+python3 -m venv ~/myenv
+source ~/myenv/bin/activate 
+pip install ecdsa flask
+run inside of virtual env. 
