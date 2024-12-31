@@ -4,63 +4,19 @@ import socket
 import threading
 from hashlib import sha256
 from flask import Flask, request, jsonify
+import os
+from blockchain import Blockchain
 
 app = Flask(__name__)
 
-class Blockchain:
-    def __init__(self):
-        self.chain = []
-        self.transactions = []
-        self.create_genesis_block()
+BLOCKCHAIN_FILE = "blockchain.data"
 
-    def create_genesis_block(self):
-        genesis_block = {
-            'index': 0,
-            'timestamp': time.time(),
-            'transactions': [],
-            'previous_hash': '0',
-            'hash': '',
-        }
-        genesis_block['hash'] = self.calculate_hash(genesis_block)
-        self.chain.append(genesis_block)
+# Initialize blockchain
+blockchain = Blockchain()
 
-    def create_block(self):
-        if not self.transactions:
-            return None
-        last_block = self.chain[-1]
-        block = {
-            'index': len(self.chain),
-            'timestamp': time.time(),
-            'transactions': self.transactions,
-            'previous_hash': last_block['hash'],
-            'hash': ''
-        }
-        block['hash'] = self.calculate_hash(block)
-        self.chain.append(block)
-        self.transactions = []  # Clear transactions after block creation
-        return block
-
-    @staticmethod
-    def calculate_hash(block):
-        block_string = json.dumps(block, sort_keys=True).encode()
-        return sha256(block_string).hexdigest()
-
-    def add_transaction(self, transaction):
-        self.transactions.append(transaction)
-
-    def is_valid_chain(self, chain):
-        for i in range(1, len(chain)):
-            current = chain[i]
-            previous = chain[i - 1]
-            if current['previous_hash'] != previous['hash']:
-                return False
-            if current['hash'] != self.calculate_hash(current):
-                return False
-        return True
-
-    def replace_chain(self, chain):
-        if len(chain) > len(self.chain) and self.is_valid_chain(chain):
-            self.chain = chain
+# Add stakeholders (example)
+blockchain.add_stakeholder("Validator1", 100)
+blockchain.add_stakeholder("Validator2", 50)
 
 class Node:
     def __init__(self, host, port, blockchain):
