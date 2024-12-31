@@ -91,3 +91,8 @@ threading.Thread(target=block_creation_loop, args=(node2, 5)).start()
 ```
 
 This version consolidates everything into one text block for easier reading and copying into a single markdown file.
+
+references:
+
+https://github.com/nambrot/blockchain-in-js
+
