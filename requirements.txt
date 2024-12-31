@@ -3,5 +3,5 @@ apt-get update
 apt-get install python3-pip python3.12-venv
 python3 -m venv ~/myenv
 source ~/myenv/bin/activate 
-pip install ecdsa flask
+pip install ecdsa (for wallet) flask (for node) numpy scikit-learn (for ai tasks)
 run inside of virtual env. 
