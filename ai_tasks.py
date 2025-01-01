@@ -26,11 +26,20 @@ def perform_ai_work(ai_task):
 def verify_ai_work(ai_task, ai_solution):
     """
     Verifies if the provided AI solution is correct by comparing the coefficients.
+    Returns a tuple of (bool, dict) containing success status and debug info.
     """
-    model = LinearRegression()
-    X, y = np.array(ai_task['data']), np.array(ai_task['target'])
-    model.fit(X, y)
-
-    # Check if the model coefficients are close to the provided solution
-    return np.allclose(model.coef_, ai_solution['coefficients'], atol=0.01)
+    # Compare directly with the original coefficients from the task
+    original_coeffs = np.array(ai_task['coefficients'])
+    solution_coeffs = np.array(ai_solution['coefficients'])
+    
+    # Use a stricter tolerance for comparison
+    is_valid = np.allclose(original_coeffs, solution_coeffs, atol=1e-3, rtol=1e-3)
+    
+    debug_info = {
+        'original': original_coeffs.tolist(),
+        'solution': solution_coeffs.tolist(),
+        'difference': np.abs(original_coeffs - solution_coeffs).tolist()
+    }
+    
+    return is_valid, debug_info
 
