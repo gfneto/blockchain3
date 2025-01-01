@@ -190,16 +190,16 @@ def perform_ai_work(submitted_code: str, dataset: Optional[str] = None) -> Dict:
                 f.write(dataset)
         
         # Simulate some coefficients for blockchain verification
-        # In a real implementation, these would come from the actual model
-        coefficients = [0.31479989701085853, 0.19944146798778906]
+        coefficients = [0.9281502425863708, 0.8418398385575229]
         
+        # Return in format expected by blockchain
         return {
             'status': 'success',
             'message': 'Code execution completed',
+            'coefficients': coefficients,  # Move coefficients to top level
             'result': {
                 'execution_time': time.time(),
-                'output': 'Simulated output',
-                'coefficients': coefficients  # Add coefficients to match blockchain expectations
+                'output': 'Simulated output'
             }
         }
         
@@ -219,11 +219,11 @@ def verify_ai_work(ai_task: Dict, ai_solution: Dict) -> Tuple[bool, Dict]:
     """
     Verifies if the provided AI solution meets the required criteria.
     """
-    if 'result' not in ai_solution or 'coefficients' not in ai_solution['result']:
-        return False, {'error': 'Missing required result data'}
+    if 'coefficients' not in ai_solution:
+        return False, {'error': 'Missing required coefficients'}
     
     # Extract coefficients from the solution
-    coefficients = ai_solution['result']['coefficients']
+    coefficients = ai_solution['coefficients']
     
     # Here you would implement actual verification logic
     # For now, just check if coefficients exist
