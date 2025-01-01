@@ -1,45 +1,165 @@
-import numpy as np
-from sklearn.linear_model import LinearRegression
+import hashlib
+import ast
+import time
+from typing import Dict, Tuple, Optional
+from enum import Enum
+from dataclasses import dataclass
+import pandas as pd
 
-def generate_ai_task():
-    """
-    Generate a new AI task by creating a random dataset and target values,
-    and returning the task with data, target, and coefficients.
-    """
-    X = np.random.rand(10, 2)  # 10 samples, 2 features
-    coefficients = np.random.rand(2)
-    y = X @ coefficients + np.random.normal(scale=0.1, size=10)  # Add noise
+class SubmissionType(Enum):
+    CODE = "code"
+    DATASET = "dataset"
+    CODE_AND_DATASET = "code_and_dataset"
 
-    return {'data': X.tolist(), 'target': y.tolist(), 'coefficients': coefficients.tolist()}
+class SubmissionStatus(Enum):
+    PENDING = "pending"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
-def perform_ai_work(ai_task):
-    """
-    Perform AI work to solve the AI task by fitting a linear regression model.
-    """
-    model = LinearRegression()
-    X, y = np.array(ai_task['data']), np.array(ai_task['target'])
-    model.fit(X, y)
+@dataclass
+class BlockchainMetadata:
+    block_number: int
+    timestamp: int
+    gas_used: int
+    transaction_hash: str
 
-    # Return the coefficients from the linear regression model
-    return {'coefficients': model.coef_.tolist()}
+class AISubmission:
+    def __init__(self, 
+                 wallet_address: str,
+                 code: Optional[str] = None, 
+                 dataset: Optional[str] = None,
+                 submission_type: SubmissionType = SubmissionType.CODE):
+        self.wallet_address = wallet_address
+        self.code = code
+        self.dataset = dataset
+        self.submission_type = submission_type
+        self.timestamp = int(time.time())
+        self.submission_hash = self._generate_hash()
+        self.status = SubmissionStatus.PENDING
+        self.blockchain_metadata: Optional[BlockchainMetadata] = None
 
-def verify_ai_work(ai_task, ai_solution):
-    """
-    Verifies if the provided AI solution is correct by comparing the coefficients.
-    Returns a tuple of (bool, dict) containing success status and debug info.
-    """
-    # Compare directly with the original coefficients from the task
-    original_coeffs = np.array(ai_task['coefficients'])
-    solution_coeffs = np.array(ai_solution['coefficients'])
+    def _generate_hash(self) -> str:
+        """Generate a unique hash for this submission"""
+        content = f"{self.wallet_address}{self.code or ''}{self.dataset or ''}{self.timestamp}"
+        return hashlib.sha256(content.encode()).hexdigest()
+
+    def to_dict(self) -> Dict:
+        return {
+            'wallet_address': self.wallet_address,
+            'submission_hash': self.submission_hash,
+            'code': self.code,
+            'dataset': self.dataset,
+            'submission_type': self.submission_type.value,
+            'timestamp': self.timestamp,
+            'status': self.status.value
+        }
+
+def verify_code_syntax(code: str) -> Tuple[bool, str]:
+    """Verify that the submitted code is valid Python syntax"""
+    try:
+        ast.parse(code)
+        
+        # Check for required functions
+        tree = ast.parse(code)
+        functions = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+        
+        if 'predict' not in functions:
+            return False, "Missing required 'predict' function"
+        
+        return True, "Code syntax is valid"
+    except SyntaxError as e:
+        return False, f"Syntax error: {str(e)}"
+
+def verify_dataset(dataset: str) -> Tuple[bool, str]:
+    """Verify that the dataset is valid CSV format with required columns"""
+    try:
+        df = pd.read_csv(pd.StringIO(dataset))
+        required_columns = ['GRE Score', 'TOEFL Score', 'University Rating', 
+                          'SOP', 'LOR', 'CGPA', 'Research', 'Chance of Admit']
+        
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return False, f"Missing required columns: {missing_columns}"
+            
+        return True, "Dataset format is valid"
+    except Exception as e:
+        return False, f"Dataset validation error: {str(e)}"
+
+def submit_to_blockchain(wallet_address: str, 
+                        code: Optional[str] = None, 
+                        dataset: Optional[str] = None) -> Dict:
+    """Submit AI code and optional dataset to the blockchain"""
     
-    # Use a stricter tolerance for comparison
-    is_valid = np.allclose(original_coeffs, solution_coeffs, atol=1e-3, rtol=1e-3)
+    # Determine submission type
+    if code and dataset:
+        submission_type = SubmissionType.CODE_AND_DATASET
+    elif code:
+        submission_type = SubmissionType.CODE
+    elif dataset:
+        submission_type = SubmissionType.DATASET
+    else:
+        raise ValueError("Must provide either code or dataset")
+
+    # Create submission
+    submission = AISubmission(
+        wallet_address=wallet_address,
+        code=code,
+        dataset=dataset,
+        submission_type=submission_type
+    )
+
+    # Verify submission contents
+    verification_results = []
     
-    debug_info = {
-        'original': original_coeffs.tolist(),
-        'solution': solution_coeffs.tolist(),
-        'difference': np.abs(original_coeffs - solution_coeffs).tolist()
+    if code:
+        is_valid, message = verify_code_syntax(code)
+        verification_results.append(('code', is_valid, message))
+    
+    if dataset:
+        is_valid, message = verify_dataset(dataset)
+        verification_results.append(('dataset', is_valid, message))
+
+    # Check if any verifications failed
+    failed_verifications = [result for result in verification_results if not result[1]]
+    if failed_verifications:
+        error_messages = [f"{result[0]}: {result[2]}" for result in failed_verifications]
+        return {
+            'status': 'error',
+            'errors': error_messages,
+            'submission': submission.to_dict()
+        }
+
+    # Here you would actually submit to the blockchain
+    # For now, simulate blockchain metadata
+    submission.blockchain_metadata = BlockchainMetadata(
+        block_number=1000,
+        timestamp=submission.timestamp,
+        gas_used=21000,
+        transaction_hash=hashlib.sha256(str(time.time()).encode()).hexdigest()
+    )
+    
+    return {
+        'status': 'success',
+        'submission': submission.to_dict(),
+        'blockchain_metadata': {
+            'block_number': submission.blockchain_metadata.block_number,
+            'timestamp': submission.blockchain_metadata.timestamp,
+            'gas_used': submission.blockchain_metadata.gas_used,
+            'transaction_hash': submission.blockchain_metadata.transaction_hash
+        }
     }
-    
-    return is_valid, debug_info
+
+def get_submission_status(submission_hash: str) -> Dict:
+    """Get the status of a submission from the blockchain"""
+    # This would actually query the blockchain
+    # For now, return simulated status
+    return {
+        'submission_hash': submission_hash,
+        'status': SubmissionStatus.PENDING.value,
+        'last_updated': int(time.time()),
+        'execution_results': None
+    }
 
