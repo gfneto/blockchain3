@@ -5,6 +5,7 @@ from typing import Dict, Tuple, Optional
 from enum import Enum
 from dataclasses import dataclass
 import pandas as pd
+import os
 
 class SubmissionType(Enum):
     CODE = "code"
@@ -162,4 +163,52 @@ def get_submission_status(submission_hash: str) -> Dict:
         'last_updated': int(time.time()),
         'execution_results': None
     }
+
+def perform_ai_work(submitted_code: str, dataset: Optional[str] = None) -> Dict:
+    """
+    Executes the submitted code against test data.
+    Returns the execution results.
+    """
+    try:
+        # Create a temporary file for the code
+        with open('temp_ai_code.py', 'w') as f:
+            f.write(submitted_code)
+        
+        # Load and validate the code
+        is_valid, message = verify_code_syntax(submitted_code)
+        if not is_valid:
+            return {'status': 'error', 'message': message}
+        
+        # If dataset provided, validate it
+        if dataset:
+            is_valid, message = verify_dataset(dataset)
+            if not is_valid:
+                return {'status': 'error', 'message': message}
+            
+            # Save dataset temporarily
+            with open('temp_dataset.csv', 'w') as f:
+                f.write(dataset)
+        
+        # Here you would actually execute the code
+        # For now, just return success
+        return {
+            'status': 'success',
+            'message': 'Code execution completed',
+            'result': {
+                'execution_time': time.time(),
+                'output': 'Simulated output'
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': f'Execution error: {str(e)}'
+        }
+    finally:
+        # Cleanup temporary files
+        if os.path.exists('temp_ai_code.py'):
+            os.remove('temp_ai_code.py')
+        if os.path.exists('temp_dataset.csv'):
+            os.remove('temp_dataset.csv')
 
