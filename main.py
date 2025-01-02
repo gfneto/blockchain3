@@ -245,18 +245,19 @@ def main():
 def start_mining():
     """Manually trigger mining process"""
     try:
-        # Create AI task
+        # Create AI task with proper code formatting
         ai_task = {
-            'code': """
-            def predict(X):
-                return X.mean()
-            """,
+            'code': "def predict(X):\n    return X.mean()",  # Fixed indentation
             'dataset': 'sample_data.csv',
             'coefficients': [0.31479989701085853, 0.19944146798778906]
         }
         
+        print("Starting mining process...")
+        print(f"AI Task: {ai_task}")
+        
         # Perform AI work
         ai_solution = perform_ai_work(ai_task['code'])
+        print(f"AI Solution: {ai_solution}")
         
         if ai_solution['status'] == 'success':
             # Mine block with AI solution
@@ -272,12 +273,18 @@ def start_mining():
                 return jsonify({
                     'message': 'New block mined!',
                     'block': new_block,
-                    'reward': blockchain.mining_reward
+                    'reward': blockchain.mining_reward,
+                    'miner_address': wallet.address
                 }), 200
         
-        return jsonify({'message': 'Mining failed', 'error': ai_solution.get('message')}), 400
+        return jsonify({
+            'message': 'Mining failed', 
+            'error': ai_solution.get('message'),
+            'status': ai_solution.get('status')
+        }), 400
         
     except Exception as e:
+        print(f"Mining error: {str(e)}")  # Added logging
         return jsonify({'message': 'Error mining block', 'error': str(e)}), 500
 
 if __name__ == "__main__":
