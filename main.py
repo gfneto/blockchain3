@@ -26,7 +26,7 @@ wallet = Wallet()
 wallet_data = wallet.save_wallet("your_password")
 print(f"Using wallet address: {wallet.address}")
 
-def create_and_submit_block_loop():
+def create_and_submit_block_loop(blockchain, wallet):
     """Background task to create and submit blocks"""
     while True:
         try:
@@ -61,12 +61,12 @@ def create_and_submit_block_loop():
         
         time.sleep(10)  # Wait before next attempt
 
-def sync_loop(node: str, interval: int):
+def sync_loop(node_address: str, interval: int):
     """Synchronization loop to keep the blockchain up to date"""
     while True:
         try:
             # Get the blockchain from the node
-            response = requests.get(f'http://{node}/chain')
+            response = requests.get(f'http://{node_address}/chain')
             if response.status_code == 200:
                 chain_data = response.json()
                 
@@ -74,10 +74,10 @@ def sync_loop(node: str, interval: int):
                 if len(chain_data['chain']) > len(blockchain.chain):
                     if blockchain.validate_chain(chain_data['chain']):
                         blockchain.chain = chain_data['chain']
-                        print(f"Chain synchronized with {node}")
+                        print(f"Chain synchronized with {node_address}")
                     
         except requests.exceptions.RequestException as e:
-            print(f"Error syncing with {node}: {e}")
+            print(f"Error syncing with {node_address}: {e}")
             
         time.sleep(interval)
 
@@ -207,27 +207,40 @@ def parse_args():
     return parser.parse_args()
 
 def main():
-    # Parse command line arguments
-    args = parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, required=True, help='Server IP address')
+    parser.add_argument('--connect-to-node', type=str, help='IP address of node to connect to')
+    args = parser.parse_args()
+    
+    # Start mining thread with correct arguments
+    mining_thread = threading.Thread(
+        target=create_and_submit_block_loop,
+        args=(blockchain, wallet)
+    )
+    mining_thread.daemon = True
+    mining_thread.start()
+    
+    # Connect to existing node if specified
+    if args.connect_to_node:
+        node_address = f"{args.connect_to_node}:5000"
+        print(f"Connected to {node_address}")
+        blockchain.register_node(node_address)
+        
+        # Start sync thread with string address
+        sync_thread = threading.Thread(
+            target=sync_loop,
+            args=(node_address, 5)
+        )
+        sync_thread.daemon = True
+        sync_thread.start()
+        
+        # Initial blockchain sync
+        resolve_conflicts()
+    
+    # Start server
+    print(f"Node running on {args.server}:5000")
+    app.run(host=args.server, port=5000)
 
-    # Initialize Blockchain
-    blockchain = Blockchain()
-
-    # Create a node based on the server IP provided in command-line args
-    node = Node(args.server, 5000, blockchain)
-
-    # Connect to the peer node specified
-    node.connect_to_peer(args.connect_to_node, 5000)
-
-    # Start syncing loop for node2
-    threading.Thread(target=sync_loop, args=(node, 5), daemon=True).start()
-
-    # Start periodic block creation loop
-    threading.Thread(target=create_and_submit_block_loop, args=(node, blockchain), daemon=True).start()
-
-    # Start Flask server to accept API requests
-    app.run(host='0.0.0.0', port=5002)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
