@@ -189,14 +189,13 @@ def perform_ai_work(submitted_code: str, dataset: Optional[str] = None) -> Dict:
             with open('temp_dataset.csv', 'w') as f:
                 f.write(dataset)
         
-        # Simulate some coefficients for blockchain verification
-        coefficients = [0.9281502425863708, 0.8418398385575229]
+        # Simulate AI work with coefficients for blockchain compatibility
+        coefficients = [0.7327164722360987, 0.5491568581115608]
         
-        # Return in format expected by blockchain
         return {
             'status': 'success',
             'message': 'Code execution completed',
-            'coefficients': coefficients,  # Move coefficients to top level
+            'coefficients': coefficients,  # Add coefficients at top level
             'result': {
                 'execution_time': time.time(),
                 'output': 'Simulated output'
@@ -206,7 +205,8 @@ def perform_ai_work(submitted_code: str, dataset: Optional[str] = None) -> Dict:
     except Exception as e:
         return {
             'status': 'error',
-            'message': f'Execution error: {str(e)}'
+            'message': f'Execution error: {str(e)}',
+            'coefficients': None  # Include coefficients even in error case
         }
     finally:
         # Cleanup temporary files
@@ -219,14 +219,15 @@ def verify_ai_work(ai_task: Dict, ai_solution: Dict) -> Tuple[bool, Dict]:
     """
     Verifies if the provided AI solution meets the required criteria.
     """
+    # Check for coefficients
     if 'coefficients' not in ai_solution:
-        return False, {'error': 'Missing required coefficients'}
+        return False, {'error': 'Missing coefficients in solution'}
     
-    # Extract coefficients from the solution
     coefficients = ai_solution['coefficients']
+    if coefficients is None:
+        return False, {'error': 'Invalid coefficients'}
     
     # Here you would implement actual verification logic
-    # For now, just check if coefficients exist
     return True, {
         'message': 'AI work verified successfully',
         'coefficients': coefficients
