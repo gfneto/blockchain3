@@ -4,7 +4,7 @@ import time
 from blockchain import Blockchain
 from node import Node
 from flask import Flask, request, jsonify
-from wallet import AIWallet
+from wallet import Wallet
 from ai_tasks import perform_ai_work, verify_ai_work
 import requests
 import json
@@ -15,12 +15,12 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import wallet after ensuring path is correct
-from wallet import AIWallet
+from wallet import Wallet
 
 # Flask App Setup
 app = Flask(__name__)
 blockchain = Blockchain()
-wallet = AIWallet()
+wallet = Wallet()
 
 # Create or load wallet
 wallet_data = wallet.create_wallet("your_password")
