@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from ecdsa import SigningKey, VerifyingKey, SECP256k1
 
 class Wallet:
@@ -29,6 +30,20 @@ class Wallet:
         except:
             return False
 
+def submit_ml_task(dataset_path, code_path):
+    """Submit a dataset and a Python code file for machine learning processing."""
+    if not os.path.exists(dataset_path):
+        print(f"Dataset file not found: {dataset_path}")
+        return
+
+    if not os.path.exists(code_path):
+        print(f"Code file not found: {code_path}")
+        return
+
+    print(f"Submitting ML Task:\nDataset: {dataset_path}\nCode: {code_path}")
+    # Here you could implement additional logic to execute the code or interact with other systems.
+    # For example, you could run the Python script with the dataset using subprocess.
+
 def cli():
     wallet = None
 
@@ -37,7 +52,8 @@ def cli():
         print("1. Create Wallet")
         print("2. Send Transaction")
         print("3. Receive")
-        print("4. Quit")
+        print("4. Submit ML Task")
+        print("5. Quit")
         choice = input("Choose an option: ")
 
         if choice == "1":
@@ -68,6 +84,11 @@ def cli():
             print(f"Your wallet address: {wallet.address}")
 
         elif choice == "4":
+            dataset_path = input("Enter the path to the dataset: ")
+            code_path = input("Enter the path to the Python code: ")
+            submit_ml_task(dataset_path, code_path)
+
+        elif choice == "5":
             print("Exiting Wallet CLI. Goodbye!")
             break
 
