@@ -4,6 +4,7 @@ import time
 from blockchain import Blockchain
 from node import Node
 from flask import Flask, request, jsonify
+from wallet import AIWallet
 from ai_tasks import perform_ai_work, verify_ai_work
 import requests
 import json
