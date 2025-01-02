@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 from ecdsa import SigningKey, VerifyingKey, SECP256k1
+from blockchain import Blockchain
 
 class Wallet:
     def __init__(self):

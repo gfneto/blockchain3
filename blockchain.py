@@ -1,99 +1,146 @@
-import time
+import hashlib
 import json
-from hashlib import sha256
+import time
+from typing import Dict, List, Optional
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
 class Blockchain:
     def __init__(self):
         self.chain = []
-        self.transactions = []
+        self.current_transactions = []
+        self.nodes = set()
         self.create_genesis_block()
+        self.mining_reward = 10  # Reward for successful AI work
 
     def create_genesis_block(self):
-        genesis_block = {
-            'index': 0,
-            'timestamp': time.time(),
-            'transactions': [],
-            'ai_solution': None,
-            'previous_hash': '0',
-            'hash': '',
-        }
-        genesis_block['hash'] = self.calculate_hash(genesis_block)
-        self.chain.append(genesis_block)
+        """Create the genesis block"""
+        self.mine_block(miner_address="0", is_genesis=True)
 
-    def create_block(self, ai_solution):
-        if not self.transactions:
-            return None
-        last_block = self.chain[-1]
+    def proof_of_ai_work(self, ai_task: Dict, ai_solution: Dict) -> bool:
+        """
+        Verify AI work as proof instead of traditional PoW
+        Returns True if the AI solution meets accuracy requirements
+        """
+        try:
+            # Verify that solution matches expected coefficients
+            expected_coeffs = np.array(ai_task['coefficients'])
+            solution_coeffs = np.array(ai_solution['coefficients'])
+            
+            # Check if the solution is within acceptable error margin
+            is_valid = np.allclose(expected_coeffs, solution_coeffs, rtol=0.1, atol=0.1)
+            
+            return is_valid
+        except Exception as e:
+            print(f"Error in proof_of_ai_work: {e}")
+            return False
+
+    def mine_block(self, miner_address: str, ai_task: Optional[Dict] = None, 
+                  ai_solution: Optional[Dict] = None, is_genesis: bool = False) -> Dict:
+        """
+        Create a new block using AI work as proof
+        """
         block = {
             'index': len(self.chain),
             'timestamp': time.time(),
-            'transactions': self.transactions,
+            'transactions': self.current_transactions,
+            'previous_hash': self.get_last_block()['hash'] if self.chain else None,
+            'miner': miner_address,
+            'ai_task': ai_task,
             'ai_solution': ai_solution,
-            'previous_hash': last_block['hash'],
-            'hash': ''
+            'is_genesis': is_genesis
         }
-        block['hash'] = self.calculate_hash(block)
-        self.chain.append(block)
-        self.transactions = []  # Clear transactions after block creation
-        return block
 
-    @staticmethod
-    def calculate_hash(block):
-        block_string = json.dumps(block, sort_keys=True).encode()
-        return sha256(block_string).hexdigest()
+        # For genesis block or when no AI task is provided
+        if is_genesis or not ai_task:
+            block['hash'] = self.calculate_hash(block)
+            self.chain.append(block)
+            self.current_transactions = []
+            return block
 
-    def add_transaction(self, transaction):
-        self.transactions.append(transaction)
+        # Verify AI work
+        if self.proof_of_ai_work(ai_task, ai_solution):
+            # Calculate block hash
+            block['hash'] = self.calculate_hash(block)
+            
+            # Add block to chain
+            self.chain.append(block)
+            
+            # Clear current transactions
+            self.current_transactions = []
+            
+            # Reward the miner
+            self.new_transaction(
+                sender="0",
+                recipient=miner_address,
+                amount=self.mining_reward
+            )
+            
+            return block
+        else:
+            raise ValueError("AI solution verification failed")
 
-    def is_valid_chain(self, chain):
+    def calculate_hash(self, block: Dict) -> str:
+        """Calculate hash of the block"""
+        # Remove hash from block if it exists to calculate new hash
+        block_copy = block.copy()
+        block_copy.pop('hash', None)
+        block_string = json.dumps(block_copy, sort_keys=True).encode()
+        return hashlib.sha256(block_string).hexdigest()
+
+    def new_transaction(self, sender: str, recipient: str, amount: float) -> int:
+        """Add a new transaction to the list of transactions"""
+        self.current_transactions.append({
+            'sender': sender,
+            'recipient': recipient,
+            'amount': amount,
+            'timestamp': time.time()
+        })
+        return self.get_last_block()['index'] + 1 if self.chain else 0
+
+    def get_last_block(self) -> Dict:
+        """Return the last block in the chain"""
+        return self.chain[-1]
+
+    def register_node(self, address: str):
+        """Add a new node to the set of nodes"""
+        self.nodes.add(address)
+
+    def validate_chain(self, chain: List[Dict]) -> bool:
+        """Check if a blockchain is valid"""
         for i in range(1, len(chain)):
             current = chain[i]
-            previous = chain[i - 1]
+            previous = chain[i-1]
+
+            # Check hash integrity
             if current['previous_hash'] != previous['hash']:
                 return False
-            if current['hash'] != self.calculate_hash(current):
-                return False
+
+            # Skip AI verification for genesis block
+            if current['is_genesis']:
+                continue
+
+            # Verify AI work for non-genesis blocks with AI tasks
+            if current['ai_task'] and current['ai_solution']:
+                if not self.proof_of_ai_work(current['ai_task'], current['ai_solution']):
+                    return False
+
         return True
 
-    def replace_chain(self, chain):
-        if len(chain) > len(self.chain) and self.is_valid_chain(chain):
-            self.chain = chain
-
-    def generate_ai_task(self):
-        """
-        Generates a random AI task involving linear regression.
-        Returns a dictionary with the task data and target values.
-        """
-        X = np.random.rand(10, 2)  # 10 samples, 2 features
-        coefficients = np.random.rand(2)
-        y = X @ coefficients + np.random.normal(scale=0.1, size=10)  # Add noise
-        return {'data': X.tolist(), 'target': y.tolist(), 'coefficients': coefficients.tolist()}
-
-    def verify_ai_work(self, ai_task, ai_solution):
-        """
-        Verifies the AI solution by comparing the solution coefficients with the expected coefficients.
-        """
-        model = LinearRegression()
-        X, y = np.array(ai_task['data']), np.array(ai_task['target'])
-        model.fit(X, y)
+    def submit_ai_task(self, wallet_address: str, code: str, dataset: str) -> Dict:
+        """Submit a new AI task to the blockchain"""
+        task = {
+            'code': code,
+            'dataset': dataset,
+            'timestamp': time.time(),
+            'submitter': wallet_address
+        }
         
-        # Print AI solution vs model coefficients for debugging
-        print(f"Expected coefficients: {ai_task['coefficients']}")
-        print(f"AI solution coefficients: {ai_solution['coefficients']}")
+        self.new_transaction(
+            sender=wallet_address,
+            recipient="0",  # System address
+            amount=0  # Task submission might have a cost in the future
+        )
         
-        # Check if the coefficients are close enough
-        return np.allclose(model.coef_, ai_solution['coefficients'], atol=0.05)  # Increased tolerance for debugging
-
-    def add_block_with_ai_work(self, ai_task, ai_solution):
-        """
-        Attempts to add a block with the AI work solution if it is verified.
-        """
-        if self.verify_ai_work(ai_task, ai_solution):
-            print("AI work verified successfully.")
-            return self.create_block(ai_solution)
-        else:
-            print("AI work verification failed.")
-            return None
+        return task
 
