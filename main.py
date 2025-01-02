@@ -241,6 +241,45 @@ def main():
     print(f"Node running on {args.server}:5000")
     app.run(host=args.server, port=5000)
 
+@app.route('/mine', methods=['POST'])
+def start_mining():
+    """Manually trigger mining process"""
+    try:
+        # Create AI task
+        ai_task = {
+            'code': """
+            def predict(X):
+                return X.mean()
+            """,
+            'dataset': 'sample_data.csv',
+            'coefficients': [0.31479989701085853, 0.19944146798778906]
+        }
+        
+        # Perform AI work
+        ai_solution = perform_ai_work(ai_task['code'])
+        
+        if ai_solution['status'] == 'success':
+            # Mine block with AI solution
+            new_block = blockchain.mine_block(
+                miner_address=wallet.address,
+                ai_task=ai_task,
+                ai_solution=ai_solution
+            )
+            
+            # Broadcast new block
+            if new_block:
+                broadcast_new_block(new_block)
+                return jsonify({
+                    'message': 'New block mined!',
+                    'block': new_block,
+                    'reward': blockchain.mining_reward
+                }), 200
+        
+        return jsonify({'message': 'Mining failed', 'error': ai_solution.get('message')}), 400
+        
+    except Exception as e:
+        return jsonify({'message': 'Error mining block', 'error': str(e)}), 500
+
 if __name__ == "__main__":
     main()
 
