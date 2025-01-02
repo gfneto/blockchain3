@@ -61,6 +61,26 @@ def create_and_submit_block_loop():
         
         time.sleep(10)  # Wait before next attempt
 
+def sync_loop(node: str, interval: int):
+    """Synchronization loop to keep the blockchain up to date"""
+    while True:
+        try:
+            # Get the blockchain from the node
+            response = requests.get(f'http://{node}/chain')
+            if response.status_code == 200:
+                chain_data = response.json()
+                
+                # If the node's chain is longer, replace ours
+                if len(chain_data['chain']) > len(blockchain.chain):
+                    if blockchain.validate_chain(chain_data['chain']):
+                        blockchain.chain = chain_data['chain']
+                        print(f"Chain synchronized with {node}")
+                    
+        except requests.exceptions.RequestException as e:
+            print(f"Error syncing with {node}: {e}")
+            
+        time.sleep(interval)
+
 @app.route('/chain', methods=['GET'])
 def get_chain():
     """Get the full blockchain"""
