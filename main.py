@@ -22,9 +22,9 @@ app = Flask(__name__)
 blockchain = Blockchain()
 wallet = Wallet()
 
-# Create or load wallet
-wallet_data = wallet.create_wallet("your_password")
-print(f"Using wallet address: {wallet_data['address']}")
+# Save wallet data
+wallet_data = wallet.save_wallet("your_password")
+print(f"Using wallet address: {wallet.address}")
 
 def create_and_submit_block_loop():
     """Background task to create and submit blocks"""
@@ -46,7 +46,7 @@ def create_and_submit_block_loop():
             if ai_solution['status'] == 'success':
                 # Mine block with AI solution
                 new_block = blockchain.mine_block(
-                    miner_address=wallet_data['address'],
+                    miner_address=wallet.address,
                     ai_task=ai_task,
                     ai_solution=ai_solution
                 )
@@ -114,7 +114,7 @@ def submit_ai_task():
     
     # Submit task using current wallet
     task = blockchain.submit_ai_task(
-        wallet_address=wallet_data['address'],
+        wallet_address=wallet.address,
         code=values['code'],
         dataset=values['dataset']
     )
