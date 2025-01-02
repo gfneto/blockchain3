@@ -8,6 +8,14 @@ from wallet import AIWallet
 from ai_tasks import perform_ai_work, verify_ai_work
 import requests
 import json
+import sys
+import os
+
+# Add the current directory to Python path if needed
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import wallet after ensuring path is correct
+from wallet import AIWallet
 
 # Flask App Setup
 app = Flask(__name__)
