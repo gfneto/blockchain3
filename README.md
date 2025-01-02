@@ -8,7 +8,7 @@ To get started, you need to install the following packages:
 sudo apt-get install python3-pip python3.12-venv
 python3 -m venv ~/myenv
 source ~/myenv/bin/activate
-pip install ecdsa flask
+pip install ecdsa flask requests
 ```
 
 ## To Run
